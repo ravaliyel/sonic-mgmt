@@ -7,10 +7,10 @@ import json
 import time
 
 # Configurable knobs (could be pulled from pytest args/ansible vars later)
-GNOI_CLIENT_CONTAINER = "gnoi-client"   # replace with actual container name
-GNOI_CLIENT_BIN       = "/usr/bin/gmmi_client"  # replace if different
-GNOI_TARGET           = "localhost:5500"        # adjust to your gRPC port
-REMOTE_URL            = "http://<control-ip>:8000/dummy.txt"  # set at runtime
+GNOI_CLIENT_CONTAINER = ""   # replace with actual container name
+GNOI_CLIENT_BIN       = "/home/v-ryeluri/bin/grpcurl"  # replace if different
+GNOI_TARGET           = "10.3.146.94:50051"        # adjust to your gRPC port
+REMOTE_URL            = "http://10.64.247.31:8000/dummy.txt"  # set at runtime
 REMOTE_DEST_PATH      = "/tmp/dummy.txt"        # destination on DUT
 LOCAL_TMP_PATH        = "/tmp"                  # local path used by RPC (if applicable)
 TIMEOUT_SEC           = 60
