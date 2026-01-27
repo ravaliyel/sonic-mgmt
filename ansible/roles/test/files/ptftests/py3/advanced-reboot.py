@@ -284,6 +284,8 @@ class ReloadTest(BaseTest):
             password=self.test_params['dut_password'],
             alt_password=self.test_params.get('alt_password')
         )
+
+        time.sleep(2) #Test: wait for connection to stabilize
         self.installed_sonic_version = self.get_installed_sonic_version()
 
         if self.test_params['packet_capture_location'] == PHYSICAL_PORT:
