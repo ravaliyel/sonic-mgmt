@@ -1589,6 +1589,7 @@ class ReloadTest(BaseTest):
     def get_installed_sonic_version(self):
         stdout, _, _ = self.dut_connection.execCommand(
             "sudo sonic_installer list | grep Current | awk '{print $2}'")
+        time.sleep(2)
         return stdout[0]
 
     def wait_until_teamd_goes_down(self):
