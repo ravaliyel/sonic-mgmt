@@ -1,4 +1,4 @@
-<domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
+<domain type='{{ virt_type | default("kvm") }}' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
   <name>{{ vm_name }}</name>
 
 {% if hwsku == 'cisco-8101-p4-32x100-vs' %}
@@ -10,7 +10,9 @@
   <currentMemory unit='GiB'>4</currentMemory>
   <vcpu placement='static'>2</vcpu>
 {% endif %}
+{% if virt_type | default("kvm") == "kvm" %}
   <cpu mode='host-model' check='partial'/>
+{% endif %}
   <resource>
     <partition>/machine</partition>
   </resource>
