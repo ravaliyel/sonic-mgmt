@@ -1,4 +1,4 @@
-<domain type='kvm'>
+<domain type='{{ virt_type | default("kvm") }}'>
   <name>{{ vm_name }}</name>
   <memory unit='KiB'>{{ memory }}</memory>
   <currentMemory unit='KiB'>{{ memory }}</currentMemory>
