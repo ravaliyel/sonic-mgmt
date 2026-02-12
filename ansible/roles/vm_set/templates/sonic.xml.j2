@@ -67,9 +67,6 @@
   </cpu>
 {% endif %}
 {% endif %}
-{% if virt_type | default("kvm") == "kvm" %}
-  <cpu mode='host-model' check='partial'/>
-{% endif %}
   <resource>
     <partition>/machine</partition>
   </resource>
