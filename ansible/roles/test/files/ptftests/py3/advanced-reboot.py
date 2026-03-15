@@ -189,6 +189,7 @@ class ReloadTest(BaseTest):
         self.check_param('neighbor_type', 'eos', required=False)
         self.check_param('ceos_neighbor_lacp_multiplier', 3, required=False)
         self.check_param('port_channel_intf_idx', [], required=False)
+        self.check_param('control_plane_down_timeout', 600, required=False)
         if not self.test_params['preboot_oper'] or self.test_params['preboot_oper'] == 'None':
             self.test_params['preboot_oper'] = None
         if not self.test_params['inboot_oper'] or self.test_params['inboot_oper'] == 'None':
@@ -240,7 +241,8 @@ class ReloadTest(BaseTest):
         self.nr_pc_pkts = 100
         self.nr_tests = 3
         self.reboot_delay = 10
-        self.control_plane_down_timeout = 600   # Wait up to 6 minutes for control plane down
+        # Use configurable timeout (default: 600s) for waiting control plane down
+        self.control_plane_down_timeout = self.test_params['control_plane_down_timeout']
         self.task_timeout = 300   # Wait up to 5 minutes for tasks to complete
         self.max_nr_vl_pkts = 500  # FIXME: should be 1000.
         # But ptf is not fast enough + swss is slow for FDB and ARP entries insertions
@@ -1490,6 +1492,13 @@ class ReloadTest(BaseTest):
         except Exception:
             traceback_msg = traceback.format_exc()
             self.fails['dut'].add(traceback_msg)
+            # Send 'quit' to all SSH threads so they don't remain blocked on queue.get()
+            if hasattr(self, 'ssh_jobs'):
+                for _, q in self.ssh_jobs:
+                    try:
+                        q.put_nowait('quit')
+                    except Exception:
+                        pass
         finally:
             # Restore cEOS LACP timer multiplier to default (3)
             if self.test_params['neighbor_type'] == "eos" and self.test_params['ceos_neighbor_lacp_multiplier'] != 3:
