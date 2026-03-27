@@ -20,18 +20,18 @@ pytestmark = [
 ]
 
 
-def test_gnoi_os_verify(duthosts, rand_one_dut_hostname, ptf_gnoi):
+def test_gnoi_os_verify(duthosts, rand_one_dut_hostname, gnmi_tls):
     """
     Verify the gNOI OS Verify API returns the current OS version.
 
     Args:
         duthosts: Fixture providing access to DUT hosts
         rand_one_dut_hostname: Fixture providing a random DUT hostname
-        ptf_gnoi: Fixture providing gNOI client interface
+        gnmi_tls: Fixture providing gNOI client interface (TLS)
     """
     duthost = duthosts[rand_one_dut_hostname]
 
-    response = ptf_gnoi.os_verify()
+    response = gnmi_tls.gnoi.os_verify()
 
     pytest_assert(
         "version" in response,
@@ -46,16 +46,16 @@ def test_gnoi_os_verify(duthosts, rand_one_dut_hostname, ptf_gnoi):
 
 
 @pytest.mark.disable_loganalyzer
-def test_gnoi_os_activate_invalid_image(ptf_gnoi):
+def test_gnoi_os_activate_invalid_image(gnmi_tls):
     """
     Verify the gNOI OS Activate API rejects an invalid OS version.
 
     Args:
-        ptf_gnoi: Fixture providing gNOI client interface
+        gnmi_tls: Fixture providing gNOI client interface (TLS)
     """
     invalid_version = "invalid-image-name"
 
-    response = ptf_gnoi.os_activate(invalid_version)
+    response = gnmi_tls.gnoi.os_activate(invalid_version)
 
     pytest_assert(
         "activateError" in response,
@@ -70,7 +70,7 @@ def test_gnoi_os_activate_invalid_image(ptf_gnoi):
 
 
 @pytest.mark.disable_loganalyzer
-def test_gnoi_os_activate_valid_image(duthosts, rand_one_dut_hostname, ptf_gnoi):
+def test_gnoi_os_activate_valid_image(duthosts, rand_one_dut_hostname, gnmi_tls):
     """
     Verify the gNOI OS Activate API responds correctly for a valid image.
 
@@ -82,11 +82,11 @@ def test_gnoi_os_activate_valid_image(duthosts, rand_one_dut_hostname, ptf_gnoi)
     Args:
         duthosts: Fixture providing access to DUT hosts
         rand_one_dut_hostname: Fixture providing a random DUT hostname
-        ptf_gnoi: Fixture providing gNOI client interface
+        gnmi_tls: Fixture providing gNOI client interface (TLS)
     """
     duthost = duthosts[rand_one_dut_hostname]
 
-    verify_response = ptf_gnoi.os_verify()
+    verify_response = gnmi_tls.gnoi.os_verify()
 
     current_image = verify_response.get("version")
     if not current_image:
@@ -99,7 +99,7 @@ def test_gnoi_os_activate_valid_image(duthosts, rand_one_dut_hostname, ptf_gnoi)
         f"Image {current_image} not found in sonic-installer list output"
     )
 
-    response = ptf_gnoi.os_activate(current_image)
+    response = gnmi_tls.gnoi.os_activate(current_image)
 
     pytest_assert(
         "activateOk" in response or "activateError" in response,
