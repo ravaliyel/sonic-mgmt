@@ -784,6 +784,8 @@ def get_report_summary(duthost, analyze_result, reboot_type, reboot_oper, base_o
             analyze_result.get(
                 "controlplane", controlplane_summary).update(
                     {"lacp_session_max_wait": max_lacp_session_wait})
+        else:
+            logging.warning("LACP session wait times were not calculated - lacp_sessions_waittime is None or empty")
 
     result_summary = {
         "reboot_type": "{}-{}".format(reboot_type, reboot_oper) if reboot_oper else reboot_type,
