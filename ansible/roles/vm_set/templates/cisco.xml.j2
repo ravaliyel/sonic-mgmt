@@ -1,4 +1,4 @@
-<domain type='kvm'>
+<domain type='{{ virt_type | default("kvm") }}'>
   <name>{{ vm_name }}</name>
   <memory unit='MB'>16384</memory>
   <currentMemory unit='MB'>16384</currentMemory>
@@ -15,10 +15,12 @@
     <apic/>
     <pae/>
   </features>
+{% if virt_type | default("kvm") == "kvm" %}
   <cpu mode='custom' match='exact'>
     <model fallback='allow'>Westmere</model>
     <feature policy='require' name='vmx'/>
   </cpu>
+{% endif %}
   <clock offset='utc'/>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
