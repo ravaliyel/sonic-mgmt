@@ -137,6 +137,7 @@ class AdvancedReboot:
         self.new_docker_image = self.request.config.getoption("--new_docker_image")
         self.neighborType = self.request.config.getoption("--neighbor_type")
         self.ceosNeighLacpMultiplier = self.request.config.getoption("--ceos_neighbor_lacp_multiplier")
+        self.controlPlaneDownTimeout = self.request.config.getoption("--control_plane_down_timeout")
 
         # Set default reboot limit if it is not given
         if self.rebootLimit is None:
@@ -951,7 +952,8 @@ class AdvancedReboot:
             "neighbor_type": self.neighborType,
             "kvm_support": True,
             "ceos_neighbor_lacp_multiplier": self.ceosNeighLacpMultiplier,
-            "packet_capture_location": self.rebootData['packet_capture_location']
+            "packet_capture_location": self.rebootData['packet_capture_location'],
+            "control_plane_down_timeout": self.controlPlaneDownTimeout
         }
 
         if self.packet_capture_location == PHYSICAL_PORT:

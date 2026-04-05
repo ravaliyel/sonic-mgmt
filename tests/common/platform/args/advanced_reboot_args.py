@@ -94,6 +94,14 @@ def add_advanced_reboot_args(parser):
     )
 
     parser.addoption(
+        "--control_plane_down_timeout",
+        action="store",
+        type=int,
+        default=600,
+        help="Timeout (in seconds) to wait for DUT control plane to go down after reboot is triggered",
+    )
+
+    parser.addoption(
         "--replace_fast_reboot_script",
         action="store",
         type=bool,
