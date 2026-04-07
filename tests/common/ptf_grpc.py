@@ -41,7 +41,7 @@ class PtfGrpc:
     to install gRPC libraries in the test environment.
     """
 
-    def __init__(self, ptfhost, target_or_env, plaintext=None, duthost=None):
+    def __init__(self, ptfhost, target_or_env, plaintext=None, duthost=None, insecure=False):
         """
         Initialize PtfGrpc client.
 
@@ -50,8 +50,10 @@ class PtfGrpc:
             target_or_env: Either target string (host:port) or GNMIEnvironment instance
             plaintext: Force plaintext mode (True/False), auto-detected if None
             duthost: DUT host instance (required for GNMIEnvironment auto-config)
+            insecure: Skip server cert verification (lab environments)
         """
         self.ptfhost = ptfhost
+        self.insecure = insecure
 
         # TLS certificate configuration
         self.ca_cert = None
@@ -109,6 +111,9 @@ class PtfGrpc:
                 cmd.extend(["-cert", self.client_cert])
             if self.client_key:
                 cmd.extend(["-key", self.client_key])
+
+            if self.insecure:
+                cmd.append("-insecure")
 
         # Standard options (avoid unsupported flags like -max-msg-sz)
         cmd.extend([
