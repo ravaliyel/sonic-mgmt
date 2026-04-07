@@ -6,7 +6,7 @@ This module provides a user-friendly wrapper around PtfGrpc for gNOI
 gRPC complexity behind clean, Pythonic method interfaces.
 """
 import logging
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -362,3 +362,88 @@ class PtfGnoi:
         response = self.grpc_client.call_unary("gnoi.system.System", "Reboot", request, metadata=metadata)
         logger.info("Reboot request sent: method=%s delay=%s force=%s", method, delay, force)
         return response
+
+    def os_verify(self) -> Dict:
+        """
+        Verify the current OS version on the device via gNOI OS.Verify.
+
+        Returns:
+            Dictionary containing:
+            - version: Current OS version string
+
+        Raises:
+            GrpcConnectionError: If connection fails
+            GrpcCallError: If the gRPC call fails
+            GrpcTimeoutError: If the call times out
+        """
+        logger.debug("Verifying OS version via gNOI OS.Verify")
+        response = self.grpc_client.call_unary("gnoi.os.OS", "Verify")
+        logger.info("OS.Verify response: %s", response)
+        return response
+
+    def os_activate(self, version: str) -> Dict:
+        """
+        Activate an OS version on the device via gNOI OS.Activate.
+
+        Args:
+            version: OS version string to activate
+
+        Returns:
+            Dictionary containing activation response:
+            - activateOk: {} on success
+            - activateError: {"detail": "..."} on failure
+
+        Raises:
+            GrpcConnectionError: If connection fails
+            GrpcCallError: If the gRPC call fails
+            GrpcTimeoutError: If the call times out
+        """
+        if not version:
+            raise ValueError("version must be provided")
+
+        request = {"version": version}
+        logger.debug("Activating OS version via gNOI OS.Activate: version=%s", version)
+        response = self.grpc_client.call_unary("gnoi.os.OS", "Activate", request)
+        logger.info("OS.Activate response: %s", response)
+        return response
+
+    def os_install(self, version: str) -> List[Dict]:
+        """
+        Preload (install) an OS image on the device via gNOI OS.Install.
+
+        This method sends a TransferRequest with the specified version. If the
+        version is already present on the device, the server responds with
+        ``validated``. Otherwise, the server responds with ``transferReady``
+        to indicate it is ready to receive image content.
+
+        Args:
+            version: OS version string to install/preload
+
+        Returns:
+            List of response dictionaries from the streaming RPC. Each entry
+            may contain one of:
+            - validated: {"description": "..."} — image already present
+            - transferReady: {} — server is ready to receive image data
+            - installError: {"type": "...", "detail": "..."} — on failure
+
+        Raises:
+            GrpcConnectionError: If connection fails
+            GrpcCallError: If the gRPC call fails
+            GrpcTimeoutError: If the call times out
+            ValueError: If version is not provided
+        """
+        if not version:
+            raise ValueError("version must be provided")
+
+        # Build the TransferRequest wrapped in InstallRequest oneof field.
+        # The JSON key "transferRequest" maps to the proto3 oneof field of the
+        # same name inside InstallRequest.
+        transfer_request = {"transferRequest": {"version": version}}
+        logger.debug(
+            "Preloading OS image via gNOI OS.Install: version=%s", version
+        )
+        responses = self.grpc_client.call_bidirectional_streaming(
+            "gnoi.os.OS", "Install", [transfer_request]
+        )
+        logger.info("OS.Install responses: %s", responses)
+        return responses
