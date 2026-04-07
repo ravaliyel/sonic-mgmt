@@ -104,6 +104,35 @@ class PtfGnoi:
                 raise FileNotFoundError(f"File not found: {remote_file}") from e
             raise
 
+    def file_transfer_to_remote(self, local_path: str, remote_url: str) -> Dict:
+        """
+        Transfer a file from a remote URL to the device.
+
+        Args:
+            local_path: Destination path on the device
+            remote_url: Source URL to download from (protocol inferred from URL scheme)
+
+        Returns:
+            Dictionary containing transfer result including hash information
+
+        Raises:
+            GrpcConnectionError: If connection fails
+            GrpcCallError: If the gRPC call fails
+            GrpcTimeoutError: If the call times out
+        """
+        logger.debug(f"Transferring file from {remote_url} to {local_path}")
+
+        request = {
+            "local_path": local_path,
+            "remote_download": {
+                "url": remote_url
+            }
+        }
+
+        response = self.grpc_client.call_unary("gnoi.file.File", "TransferToRemote", request)
+        logger.info(f"TransferToRemote completed: {local_path}")
+        return response
+
     def __str__(self):
         return f"PtfGnoi(grpc_client={self.grpc_client})"
 

@@ -175,6 +175,91 @@ def ptf_gnmi(ptf_grpc):
     return ptf_grpc
 
 
+class _GnmiTlsContext:
+    """Context object returned by the gnmi_tls fixture.
+
+    Attributes:
+        grpc: PtfGrpc - low-level gRPC client
+        gnoi: PtfGnoi - high-level gNOI client wrapper
+    """
+
+    def __init__(self, grpc_client, gnoi_client):
+        self.grpc = grpc_client
+        self.gnoi = gnoi_client
+
+
+@pytest.fixture(scope="module")
+def gnmi_tls(duthost, localhost, ptfhost):
+    """
+    Set up gNMI/gNOI server with TLS and provide client access.
+
+    This fixture creates a complete TLS environment and returns a context object
+    that exposes a ready-to-use gNOI client. Tests do not need to manage
+    certificates or server configuration directly.
+
+    The fixture:
+    1. Creates a configuration checkpoint for rollback
+    2. Generates TLS certificates with proper SAN for the DUT IP
+    3. Distributes certificates to DUT and PTF container
+    4. Configures CONFIG_DB for TLS mode
+    5. Restarts the gNOI server process
+    6. Verifies TLS connectivity
+    7. Yields a context object with .gnoi and .grpc attributes
+    8. Rolls back configuration and cleans up certificates on teardown
+
+    Args:
+        duthost: DUT host instance to configure
+        localhost: Localhost instance for certificate generation
+        ptfhost: PTF host instance for client certificates
+
+    Returns:
+        _GnmiTlsContext: Object with .gnoi (PtfGnoi) and .grpc (PtfGrpc) attributes
+
+    Example:
+        from tests.common.fixtures.grpc_fixtures import gnmi_tls  # noqa: F401
+
+        def test_system_time(gnmi_tls):  # noqa: F811
+            result = gnmi_tls.gnoi.system_time()
+            assert "time" in result
+    """
+    from tests.common.gu_utils import create_checkpoint, rollback
+    from tests.common.helpers.gnmi_utils import GNMIEnvironment
+    from tests.common.ptf_grpc import PtfGrpc
+    from tests.common.ptf_gnoi import PtfGnoi
+
+    checkpoint_name = "gnmi_tls_setup"
+
+    logger.info("Setting up gnmi_tls environment")
+    create_checkpoint(duthost, checkpoint_name)
+
+    try:
+        _create_gnoi_certs(duthost, localhost, ptfhost)
+        _configure_gnoi_tls_server(duthost)
+        _restart_gnoi_server(duthost)
+        _verify_gnoi_tls_connectivity(duthost, ptfhost)
+
+        env = GNMIEnvironment(duthost, GNMIEnvironment.GNMI_MODE)
+        grpc_client = PtfGrpc(ptfhost, env, duthost=duthost)
+        gnoi_client = PtfGnoi(grpc_client)
+
+        logger.info("gnmi_tls environment ready")
+        yield _GnmiTlsContext(grpc_client, gnoi_client)
+
+    finally:
+        logger.info("Cleaning up gnmi_tls environment")
+        try:
+            rollback(duthost, checkpoint_name)
+            logger.info("Configuration rollback completed")
+        except Exception as e:
+            logger.error(f"Failed to rollback configuration: {e}")
+
+        try:
+            _delete_gnoi_certs(localhost)
+            logger.info("Certificate cleanup completed")
+        except Exception as e:
+            logger.error(f"Failed to cleanup certificates: {e}")
+
+
 @pytest.fixture(scope="module")
 def setup_gnoi_tls_server(duthost, localhost, ptfhost):
     """

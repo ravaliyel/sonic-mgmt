@@ -1,38 +1,34 @@
 """
 Simple integration tests for gNOI File service.
+
+All tests automatically run with TLS server configuration by default.
+Users don't need to worry about TLS configuration.
 """
-import json
 import pytest
 import logging
 
-from .helper import gnoi_request
+from tests.common.fixtures.grpc_fixtures import gnmi_tls  # noqa: F401
 from tests.common.utilities import wait_until
 
 logger = logging.getLogger(__name__)
 
 pytestmark = [
-    pytest.mark.topology('any')
+    pytest.mark.topology('any'),
 ]
 
 
-def test_file_stat(duthosts, rand_one_dut_hostname, localhost):
-    """Test File.Stat RPC."""
-    duthost = duthosts[rand_one_dut_hostname]
-
-    request_json = json.dumps({"path": "/etc/hostname"})
+def test_file_stat(gnmi_tls):  # noqa: F811
+    """Test File.Stat RPC with TLS enabled by default."""
     try:
-        ret, msg = gnoi_request(duthost, localhost, "File", "Stat", request_json)
-        if ret == 0:
-            logger.info("File.Stat result: {}".format(msg))
-        else:
-            # File service may not be fully implemented
-            logger.warning("File.Stat returned error (may be expected): {}".format(msg))
+        result = gnmi_tls.gnoi.file_stat("/etc/hostname")
+        assert "stats" in result
+        logger.info("File stats: {}".format(result['stats'][0]))
     except Exception as e:
         # File service may not be fully implemented
         logger.warning("File.Stat failed (expected): {}".format(e))
 
 
-def test_file_transfer_to_remote(duthosts, rand_one_dut_hostname, localhost, ptfhost):
+def test_file_transfer_to_remote(gnmi_tls, ptfhost, duthosts, rand_one_dut_hostname):  # noqa: F811
     """Test File.TransferToRemote RPC downloading file from HTTP server to DUT."""
     duthost = duthosts[rand_one_dut_hostname]
 
@@ -70,37 +66,34 @@ def test_file_transfer_to_remote(duthosts, rand_one_dut_hostname, localhost, ptf
         remote_url = "http://{}:{}/{}".format(ptf_ip, http_port, test_filename)
         logger.info("Testing TransferToRemote: {} -> {}".format(remote_url, local_path))
 
-        request_json = json.dumps({
-            "local_path": local_path,
-            "remote_download": {
-                "url": remote_url
-            }
-        })
-        ret, msg = gnoi_request(duthost, localhost, "File", "TransferToRemote", request_json)
+        result = gnmi_tls.gnoi.file_transfer_to_remote(
+            local_path=local_path,
+            remote_url=remote_url
+        )
 
-        if ret == 0:
-            # 5. Verify file was downloaded to DUT
-            file_stat = duthost.stat(path=local_path)
-            assert file_stat["stat"]["exists"], "File {} not found on DUT after transfer".format(local_path)
-            logger.info("File successfully downloaded to DUT: {}".format(local_path))
+        # 5. Verify response has hash
+        assert "hash" in result, "TransferToRemote response missing hash field"
+        logger.info("TransferToRemote response: {}".format(result))
 
-            # 6. Verify downloaded content
-            downloaded_content = duthost.shell("cat {}".format(local_path))["stdout"].strip()
-            assert test_content in downloaded_content, \
-                "Content mismatch. Expected: '{}', Got: '{}'".format(test_content, downloaded_content)
-            logger.info("File content verified: {}".format(downloaded_content))
+        # 6. Verify file was downloaded to DUT
+        file_stat = duthost.stat(path=local_path)
+        assert file_stat["stat"]["exists"], "File {} not found on DUT after transfer".format(local_path)
+        logger.info("File successfully downloaded to DUT: {}".format(local_path))
 
-            logger.info("TransferToRemote test completed successfully")
-        else:
-            # File service may not be fully implemented
-            logger.warning("File.TransferToRemote failed (may be expected): {}".format(msg))
+        # 7. Verify downloaded content
+        downloaded_content = duthost.shell("cat {}".format(local_path))["stdout"].strip()
+        assert test_content in downloaded_content, \
+            "Content mismatch. Expected: '{}', Got: '{}'".format(test_content, downloaded_content)
+        logger.info("File content verified: {}".format(downloaded_content))
+
+        logger.info("TransferToRemote test completed successfully")
 
     except Exception as e:
         # File service may not be fully implemented
         logger.warning("File.TransferToRemote failed (may be expected): {}".format(e))
 
     finally:
-        # 7. Cleanup
+        # 8. Cleanup
         logger.info("Cleaning up test resources")
         try:
             # Stop HTTP server
