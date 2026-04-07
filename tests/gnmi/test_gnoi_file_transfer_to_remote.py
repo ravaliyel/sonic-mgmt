@@ -1,69 +1,43 @@
+"""
+Integration tests for gNOI File.TransferToRemote RPC.
 
-# tests/gnoi/test_gnoi_file_transfer_to_remote.py
+All tests automatically run with TLS server configuration via the gnmi_tls fixture.
+"""
+import pytest
+import logging
 
-import os
-import subprocess
-import json
-import time
+from tests.common.fixtures.grpc_fixtures import gnmi_tls  # noqa: F401
 
-# Configurable knobs (could be pulled from pytest args/ansible vars later)
-GNOI_CLIENT_CONTAINER = ""   # replace with actual container name
-GNOI_CLIENT_BIN       = "/home/v-ryeluri/bin/grpcurl"  # replace if different
-GNOI_TARGET           = "10.3.146.94:50051"        # adjust to your gRPC port
-REMOTE_URL            = "http://10.64.247.31:8000/dummy.txt"  # set at runtime
-REMOTE_DEST_PATH      = "/tmp/dummy.txt"        # destination on DUT
-LOCAL_TMP_PATH        = "/tmp"                  # local path used by RPC (if applicable)
-TIMEOUT_SEC           = 60
+logger = logging.getLogger(__name__)
 
-def _build_request_json():
-    """
-    Build the JSON payload for GNOI file.transfer_to_remote as described in the meeting.
-    Fields used: path, local_path, remote_download (URL).
-    """
-    req = {
-        "path": REMOTE_DEST_PATH,
-        "local_path": LOCAL_TMP_PATH,
-        "remote_download": REMOTE_URL
-    }
-    return json.dumps(req)
+REMOTE_DEST_PATH = "/tmp/gnoi_transfer_test_file"
 
-def _docker_exec_gnoi(json_payload: str):
-    """
-    Execute the gmmi/gnoi client via docker exec, passing module=file and rpc=transfer_to_remote.
-    Meeting guidance: docker exec <container> gmmi_client --target localhost:<port> --module file --rpc transfer_to_remote --json '<payload>'
-    """
-    cmd = [
-        "docker", "exec", GNOI_CLIENT_CONTAINER,
-        GNOI_CLIENT_BIN,
-        "--target", GNOI_TARGET,
-        "--module", "file",
-        "--rpc", "transfer_to_remote",
-        "--json", json_payload
-    ]
-    print("Running:", " ".join(cmd))
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUT_SEC)
+pytestmark = [
+    pytest.mark.topology('any'),
+]
 
-def test_gnoi_file_transfer_to_remote():
-    # 1) Ensure test preconditions (e.g., environment variable for REMOTE_URL)
-    url = os.environ.get("GNOI_REMOTE_URL", REMOTE_URL)
-    assert url.startswith("http://") or url.startswith("https://"), "REMOTE_URL must be HTTP(S)"
 
-    # 2) Build the request
-    payload = _build_request_json().replace(REMOTE_URL, url)
+def test_gnoi_file_transfer_to_remote(gnmi_tls, duthost, request):  # noqa: F811
+    """Test File.TransferToRemote RPC downloads a remote file to the DUT."""
+    remote_url = request.config.getoption("--gnoi_remote_url", default=None, skip=True)
+    assert remote_url, (
+        "A remote URL must be provided via --gnoi_remote_url pytest option "
+        "(e.g. http://<server>/file.bin)"
+    )
+    assert remote_url.startswith("http://") or remote_url.startswith("https://"), (
+        "remote_url must be an HTTP(S) URL"
+    )
 
-    # 3) Call the client
-    proc = _docker_exec_gnoi(payload)
+    logger.info("Calling gNOI File.TransferToRemote: url=%s dest=%s", remote_url, REMOTE_DEST_PATH)
+    result = gnmi_tls.gnoi.file_transfer_to_remote(
+        url=remote_url,
+        local_path=REMOTE_DEST_PATH,
+    )
+    logger.info("TransferToRemote result: %s", result)
 
-    # 4) Basic checks on client output
-    print("STDOUT:\n", proc.stdout)
-    print("STDERR:\n", proc.stderr)
-    assert proc.returncode == 0, f"GNOI client failed: {proc.stderr}"
-
-    # 5) Optionally, verify the file landed on DUT (example via docker exec to DUT namespace)
-    # Replace with a proper check command available in your environment.
-    verify_cmd = ["docker", "exec", GNOI_CLIENT_CONTAINER, "bash", "-lc", f"ls -l {REMOTE_DEST_PATH} && wc -c {REMOTE_DEST_PATH}"]
-    verify = subprocess.run(verify_cmd, capture_output=True, text=True, timeout=TIMEOUT_SEC)
-    print("VERIFY:\n", verify.stdout)
-    assert verify.returncode == 0, f"Destination file not found: {verify.stderr}"
-    # Optional: size > 0
-    assert " 0 " not in verify.stdout, "Downloaded file appears empty"
+    # Verify the file exists on the DUT after the transfer
+    stat_result = duthost.stat(path=REMOTE_DEST_PATH)
+    assert stat_result["stat"]["exists"], f"File not found on DUT after transfer: {REMOTE_DEST_PATH}"
+    assert stat_result["stat"]["size"] > 0, f"Downloaded file is empty: {REMOTE_DEST_PATH}"
+    logger.info("File successfully transferred to DUT: %s (size=%d bytes)",
+                REMOTE_DEST_PATH, stat_result["stat"]["size"])
