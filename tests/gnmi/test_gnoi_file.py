@@ -47,6 +47,7 @@ def test_file_transfer_to_remote(gnmi_tls, ptfhost, duthosts, rand_one_dut_hostn
         # 3. Wait for HTTP server to start
         ptf_ip = ptfhost.mgmt_ip
         logger.info(f"Waiting for HTTP server to start at {ptf_ip}:{http_port}")
+        
         def server_ready():
             try:
                 result = ptfhost.command(f"curl -f --max-time 2 {ptf_ip}:{http_port}",
