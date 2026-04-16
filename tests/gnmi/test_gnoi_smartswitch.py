@@ -112,3 +112,4 @@ def test_gnoi_system_reboot_halt_dpus(duthosts, rand_one_dut_hostname, localhost
             pytest.fail("DPU {} (DPU index: {}) failed to reboot properly".format(dpuhost_name, dpu_index))
 
         logging.info("DPU {} (DPU index: {}) rebooted successfully".format(dpuhost_name, dpu_index))
+        

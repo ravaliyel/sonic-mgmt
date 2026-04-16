@@ -263,7 +263,7 @@ def gnmi_tls(request, duthost, ptfhost):
             gnoi=gnoi_client,
             gnmic=gnmic_client,
             transport='tls',
-             _duthost=duthost,
+            _duthost=duthost,
         )
 
         logger.info("Constructed PtfGnmic client: %s", gnmic_client)
@@ -277,11 +277,13 @@ def gnmi_tls(request, duthost, ptfhost):
             output = rollback(duthost, checkpoint_name)
             stdout = output.get('stdout', '')
             if output.get('rc') or "Config rolled back successfully" not in stdout:
-                logger.error("Configuration rollback failed: %s", output.get('stdout', output.get('msg', 'unknown error')))
+                error_msg = output.get('stdout', output.get('msg', 'unknown error'))
+                logger.error("Configuration rollback failed: %s", error_msg)
             else:
                 logger.info("Configuration rollback completed")
         except Exception as e:
-            logger.error(f"Configuration rollback failed with exception: {e}")
+            logger.error("Configuration rollback failed with exception: %s", e)
+
 
         try:
             _delete_gnoi_certs(cert_dir)
