@@ -284,7 +284,6 @@ def gnmi_tls(request, duthost, ptfhost):
         except Exception as e:
             logger.error("Configuration rollback failed with exception: %s", e)
 
-
         try:
             _delete_gnoi_certs(cert_dir)
             logger.info("Certificate cleanup completed")

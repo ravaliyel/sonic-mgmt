@@ -433,4 +433,3 @@ class PtfGnoi:
         response = self.grpc_client.call_unary("gnoi.system.System", "RebootStatus", metadata=metadata)
         logger.debug(f"Reboot status: {response}")
         return response
-    
