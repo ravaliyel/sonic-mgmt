@@ -783,6 +783,8 @@ def get_report_summary(duthost, analyze_result, reboot_type, reboot_oper, base_o
                 max_lacp_session_wait = max(filtered_lacp_sessions_waittime)
             else:
                 max_lacp_session_wait = None
+                logger.warning("LACP session wait times were not calculated - "
+                               "all LACP session wait time values are None.")
             analyze_result.get(
                 "controlplane", controlplane_summary).update(
                     {"lacp_session_max_wait": max_lacp_session_wait})
