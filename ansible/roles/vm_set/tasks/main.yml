@@ -328,6 +328,20 @@
     - ptf_imagename is defined
     - ptf_imagename == "docker-ptf-anvl"
 
+- name: Check if KVM is available
+  stat:
+    path: /dev/kvm
+  register: kvm_device
+  become: true
+
+- name: Set virtualization type based on KVM availability
+  set_fact:
+    virt_type: "{{ 'kvm' if kvm_device.stat.exists else 'qemu' }}"
+
+- name: Display virtualization type
+  debug:
+    msg: "Using virtualization type: {{ virt_type }}"
+
 - name: Retrieve a list of the defined VMs
   virt: command=list_vms
         uri=qemu:///system
